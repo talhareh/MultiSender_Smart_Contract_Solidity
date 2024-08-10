@@ -15,6 +15,7 @@ contract WalletNumberMapping {
     
     event WalletNumberAdded(address indexed wallet, uint256 number);
     event TokensDistributed(address indexed wallet, uint256 amount);
+    event WalletRemoved(address indexed wallet);
     
     modifier onlyOwner() {
         require(msg.sender == owner, "Only the owner can call this function");
@@ -41,30 +42,51 @@ contract WalletNumberMapping {
         }
     }
 
-    // Function to get the number associated with a wallet address
     function getWalletNumber(address _wallet) public view returns (uint256) {
         return walletNumbers[_wallet];
     }
 
-    // Function to get all wallet addresses
-    function getAllWalletAddresses() public view returns (address[] memory) {
-        return walletAddresses;
+    // Updated function to return both addresses and their associated numbers
+    function getAllWalletAddresses() public view returns (address[] memory, uint256[] memory) {
+        uint256[] memory numbers = new uint256[](walletAddresses.length);
+        for (uint i = 0; i < walletAddresses.length; i++) {
+            numbers[i] = walletNumbers[walletAddresses[i]];
+        }
+        return (walletAddresses, numbers);
     }
 
-    // Function to get the total count of wallet addresses
     function getWalletCount() public view returns (uint256) {
         return walletAddresses.length;
     }
 
-    // Function to distribute tokens based on wallet numbers
     function distributeTokens() public onlyOwner {
         for (uint i = 0; i < walletAddresses.length; i++) {
             address wallet = walletAddresses[i];
             uint256 amount = walletNumbers[wallet];
             
-            // Transfer the tokens
             require(token.transfer(wallet, amount), "Token transfer failed");
             emit TokensDistributed(wallet, amount);
+        }
+    }
+
+    function removeWallets(address[] memory _walletsToRemove) public onlyOwner {
+        for (uint i = 0; i < _walletsToRemove.length; i++) {
+            address walletToRemove = _walletsToRemove[i];
+            
+            // Find the index of the wallet in the array
+            for (uint j = 0; j < walletAddresses.length; j++) {
+                if (walletAddresses[j] == walletToRemove) {
+                    // Remove the wallet from the array by replacing it with the last element
+                    walletAddresses[j] = walletAddresses[walletAddresses.length - 1];
+                    walletAddresses.pop();
+                    
+                    // Remove the wallet from the mapping
+                    delete walletNumbers[walletToRemove];
+                    
+                    emit WalletRemoved(walletToRemove);
+                    break;
+                }
+            }
         }
     }
 }
